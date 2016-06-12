@@ -108,6 +108,12 @@ class WindowMove: NSWindowController {
                 var rect = SizeHelper.hearthstoneWindow.frame
                 rect.origin = NSZeroPoint
                 defaultFrame = rect
+            } else if window == "Player Board Damage" {
+                currentWindow = Game.instance.playerBoardDamage!.window
+                defaultFrame = NSRect(x: 887.5, y: 569.0, width: 50.0, height: 50.0)
+            } else if window == "Opponent Board Damage" {
+                currentWindow = Game.instance.opponentBoardDamage!.window
+                defaultFrame = NSRect(x: 766.5, y: 67.0, width: 50.0, height: 50.0)
             }
 
             update()
@@ -161,7 +167,7 @@ class WindowMove: NSWindowController {
             + "width: \(NSWidth(defaultFrame)), height: \(NSHeight(defaultFrame)))\n"
             + "NSPoint(x: \(_x), y: \(_y))"
 
-        let frame = SizeHelper.frameRelativeToHearthstone(
+        let frame = SizeHelper.hearthstoneWindow.relativeFrame(
             NSRect(x: _x, y: _y, width: NSWidth(defaultFrame), height: NSHeight(defaultFrame)),
             relative: true)
         currentWindow?.setFrame(frame, display: true)

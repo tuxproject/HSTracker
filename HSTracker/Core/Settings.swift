@@ -35,6 +35,10 @@ final class Settings {
         }
         return nil
     }
+    var quitWhenHearthstoneCloses: Bool {
+        set { set("quit_when_hs_closes", value: newValue) }
+        get { return get("quit_when_hs_closes") as? Bool ?? false }
+    }
     var deckManagerZoom: Double {
         set { set("deck_manager_zoom", value: newValue) }
         get { return get("deck_manager_zoom") as? Double ?? 100.0 }
@@ -51,6 +55,14 @@ final class Settings {
         set { set("card_size", value: newValue.rawValue) }
         get { return CardSize(rawValue: get("card_size") as? Int
             ?? CardSize.Big.rawValue) ?? CardSize.Big }
+    }
+    var deckSortCriteria: String {
+        set { set("deck_sort_criteria", value: newValue) }
+        get { return get("deck_sort_criteria") as? String ?? "name" }
+    }
+    var deckSortOrder: String {
+        set { set("deck_sort_order", value: newValue) }
+        get { return get("deck_sort_order") as? String ?? "ascending" }
     }
     var hearthstoneLogPath: String {
         set { set("hearthstone_log_path", value: newValue) }
@@ -188,6 +200,19 @@ final class Settings {
         set { set("show_win_loss_ratio", value: newValue) }
         get { return get("show_win_loss_ratio") as? Bool ?? false }
     }
+    var playerInHandColor: NSColor {
+        set { set("player_in_hand_color", value: [
+            newValue.redComponent,
+            newValue.greenComponent,
+            newValue.blueComponent])
+        }
+        get {
+            if let hexColor = get("player_in_hand_color") as? [CGFloat] where hexColor.count == 3 {
+                return NSColor(red: hexColor[0], green: hexColor[1], blue: hexColor[2], alpha: 1)
+            }
+            return NSColor(red: 0.678, green: 1, blue: 0.184, alpha: 1)
+        }
+    }
 
     var playerTrackerFrame: NSRect? {
         set { set("player_tracker_frame",
@@ -209,6 +234,19 @@ final class Settings {
             }
             return nil
         }
+    }
+    
+    var playerBoardDamage: Bool {
+        set { set("player_board_damage", value: newValue) }
+        get { return get("player_board_damage") as? Bool ?? true }
+    }
+    var opponentBoardDamage: Bool {
+        set { set("opponent_board_damage", value: newValue) }
+        get { return get("opponent_board_damage") as? Bool ?? true }
+    }
+    var fatigueIndicator: Bool {
+        set { set("show_fatigue", value: newValue) }
+        get { return get("show_fatigue") as? Bool ?? true }
     }
 
     // MARK: - Notifications

@@ -1,3 +1,8 @@
+#### 0.16.11
+- Option to hide board damage
+- Chinese translation update
+- Add Gitter link in the deck manager
+
 #### 0.16.10
 - Added themes and set Dark as default
 - Better font for russian players
@@ -7,6 +12,15 @@
 - Add an option to show your opponent class and name in his tracker
 - Option to save your current deck or your opponent's one
 - Ability to archive and unarchive decks
+- Show win loss ratio for in tracker
+- Add an option to close HSTracker when Hearthstone is closed
+- Undo/Redo in deck creation/edition
+- Ability to sort decks in manager
+- Add an option to change in-hand color
+- Add an icon for Wild decks in manager
+- Show detailled information on deck manager
+- On-board damage information
+- Fatigue counter
 
 #### 0.16.9
 - Fixed a bug where HSTracker would crash when adding a deck

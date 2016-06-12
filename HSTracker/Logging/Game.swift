@@ -35,7 +35,6 @@ class Game {
     var knownCardIds = [Int: String]()
     var joustReveals = 0
     var awaitingRankedDetection = true
-    var rankDetectionMaxTry = 0
     var lastAssetUnload: Double = 0
     var gameStarted = false
     var gameEnded = true {
@@ -51,6 +50,8 @@ class Game {
     var opponentTracker: Tracker?
     var secretTracker: SecretTracker?
     var timerHud: TimerHud?
+    var playerBoardDamage: BoardDamage?
+    var opponentBoardDamage: BoardDamage?
     var cardHuds: [CardHud]?
     var lastCardPlayed: Int?
     var activeDeck: Deck?
@@ -120,8 +121,8 @@ class Game {
         }
         return entities.map { $0.1 }
             .filter { !String.isNullOrEmpty($0.cardId)
-                && !$0.info.created && !String.isNullOrEmpty($0.card.set) }
-            .any { Database.wildSets.contains($0.card.set) } ? .Wild : .Standard
+                && !$0.info.created && $0.card.set != nil }
+            .any { CardSet.wildSets().contains($0.card.set!) } ? .Wild : .Standard
     }
 
     static let instance = Game()
@@ -135,12 +136,10 @@ class Game {
     func reset() {
         Log.verbose?.message("Reseting Game")
         currentTurn = 0
-        currentRank = 0
         victoryScreenShow = false
         maxId = 0
         lastId = 0
 
-        rankDetectionMaxTry = 0
         entities.removeAll()
         tmpEntities.removeAll()
         knownCardIds.removeAll()
@@ -174,16 +173,18 @@ class Game {
         wasInProgress = false
         hasBeenConceded = false
 
-        dispatch_async(dispatch_get_main_queue()) {
-            self.secretTracker?.window?.orderOut(self)
-            self.timerHud?.window?.orderOut(self)
-        }
-
         player.reset()
         opponent.reset()
 
         updateCardHuds()
-
+        
+        dispatch_async(dispatch_get_main_queue()) {
+            self.secretTracker?.window?.orderOut(self)
+            self.timerHud?.window?.orderOut(self)
+            self.playerBoardDamage?.window?.orderOut(self)
+            self.opponentBoardDamage?.window?.orderOut(self)
+        }
+        
         if let activeDeck = activeDeck {
             activeDeck.reset()
         }
@@ -224,18 +225,6 @@ class Game {
         if let opponentTracker = self.opponentTracker {
             opponentTracker.player = self.opponent
         }
-    }
-
-    func setSecretTracker(tracker: SecretTracker?) {
-        self.secretTracker = tracker
-    }
-
-    func setTimerHud(timerHud: TimerHud?) {
-        self.timerHud = timerHud
-    }
-
-    func setCardHuds(cardHuds: [CardHud]) {
-        self.cardHuds = cardHuds
     }
 
     // MARK: - game state
@@ -300,20 +289,14 @@ class Game {
 
     func handleEndGame() {
         Log.verbose?.message("currentRank: \(currentRank), currentGameMode: \(currentGameMode)")
-        if rankDetectionMaxTry >= 3 {
-            Log.warning?.message("Can't get rank after 15 seconds, ignore game")
-            return
+        // when we loose the rank is not show, so we just wait 10 seconds max to
+        // get the rank and then we save
+        waitForRank(10) {
+            self.saveStats()
         }
+    }
 
-        rankDetectionMaxTry += 1
-
-        if currentRank == 0 || currentGameMode == .None || currentGameMode == .Casual {
-            waitForRank(5) {
-                self.handleEndGame()
-            }
-            return
-        }
-
+    private func saveStats() {
         if endGameStats {
             return
         }
@@ -676,6 +659,7 @@ class Game {
     func playerFatigue(value: Int) {
         Log.info?.message("Player get \(value) fatigue")
         player.fatigue = value
+        updatePlayerTracker()
     }
 
     func playerCreateInPlay(entity: Entity, cardId: String?, turn: Int) {
@@ -881,6 +865,7 @@ class Game {
 
     func opponentFatigue(value: Int) {
         opponent.fatigue = value
+        updateOpponentTracker()
     }
 
     func opponentCreateInPlay(entity: Entity, cardId: String?, turn: Int) {
@@ -1104,6 +1089,37 @@ class Game {
             }
         }
     }
+    
+    func updateBoardAttack() {
+        let board = BoardState()
+        let settings = Settings.instance
+        
+        if settings.playerBoardDamage {
+            dispatch_async(dispatch_get_main_queue()) {
+                if !self.gameEnded {
+                    self.playerBoardDamage?.showWindow(self)
+                    self.playerBoardDamage?.update(board.player.damage)
+                } else {
+                    self.playerBoardDamage?.window?.orderOut(self)
+                }
+            }
+        } else {
+            self.playerBoardDamage?.window?.orderOut(self)
+        }
+        
+        if settings.opponentBoardDamage {
+            dispatch_async(dispatch_get_main_queue()) {
+                if !self.gameEnded {
+                    self.opponentBoardDamage?.showWindow(self)
+                    self.opponentBoardDamage?.update(board.opponent.damage)
+                } else {
+                    self.opponentBoardDamage?.window?.orderOut(self)
+                }
+            }
+        } else {
+            self.opponentBoardDamage?.window?.orderOut(self)
+        }
+    }
 
     private func updateTracker(tracker: Tracker?, reset: Bool = false) {
         if reset {
@@ -1159,35 +1175,47 @@ class Game {
     }
 
     func updatePlayerTracker(reset: Bool = false) {
+        updateBoardAttack()
         updateTracker(playerTracker, reset: reset)
     }
 
     func updateOpponentTracker(reset: Bool = false) {
+        updateBoardAttack()
         updateTracker(opponentTracker, reset: reset)
     }
 
     func hearthstoneIsActive(active: Bool) {
         if Settings.instance.autoPositionTrackers {
             if let tracker = self.playerTracker {
-                changeTracker(tracker, active: active,
+                moveWindow(tracker, active: active,
                               frame: SizeHelper.playerTrackerFrame())
             }
             if let tracker = self.opponentTracker {
-                changeTracker(tracker, active: active,
+                moveWindow(tracker, active: active,
                               frame: SizeHelper.opponentTrackerFrame())
             }
         }
         if let tracker = self.secretTracker {
-            changeTracker(tracker, active: active, frame: SizeHelper.secretTrackerFrame())
+            moveWindow(tracker, active: active, frame: SizeHelper.secretTrackerFrame())
         }
         if let tracker = self.timerHud {
-            changeTracker(tracker, active: active, frame: SizeHelper.timerHudFrame())
+            moveWindow(tracker, active: active, frame: SizeHelper.timerHudFrame())
         }
 
         updateCardHuds()
+        if let playerBoardDamage = playerBoardDamage {
+            moveWindow(playerBoardDamage,
+                       active: active,
+                       frame: SizeHelper.playerBoardDamageFrame())
+        }
+        if let opponentBoardDamage = opponentBoardDamage {
+            moveWindow(opponentBoardDamage,
+                       active: active,
+                       frame: SizeHelper.opponentBoardDamageFrame())
+        }
     }
 
-    func changeTracker(tracker: NSWindowController, active: Bool, frame: NSRect) {
+    func moveWindow(tracker: NSWindowController, active: Bool, frame: NSRect) {
         guard frame != NSZeroRect else {return}
 
         tracker.window?.setFrame(frame, display: true)

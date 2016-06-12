@@ -20,6 +20,8 @@ class PlayerTrackersPreferences: NSViewController, MASPreferencesViewController 
     @IBOutlet weak var showDeathrattleCounter: NSButton!
     @IBOutlet weak var flashOnDraw: NSButton!
     @IBOutlet weak var showRecord: NSButton!
+    @IBOutlet weak var inHandColor: NSColorWell!
+    @IBOutlet weak var showBoardDamage: NSButton!
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -33,6 +35,15 @@ class PlayerTrackersPreferences: NSViewController, MASPreferencesViewController 
         showDeathrattleCounter.state = settings.showPlayerDeathrattle ? NSOnState : NSOffState
         flashOnDraw.state = settings.flashOnDraw ? NSOnState : NSOffState
         showRecord.state = settings.showWinLossRatio ? NSOnState : NSOffState
+        inHandColor.color = settings.playerInHandColor
+        showBoardDamage.state = settings.playerBoardDamage ? NSOnState : NSOffState
+    }
+    
+    @IBAction func colorChange(sender: NSColorWell) {
+        let settings = Settings.instance
+        if sender == inHandColor {
+            settings.playerInHandColor = inHandColor.color
+        }
     }
 
     @IBAction func checkboxClicked(sender: NSButton) {
@@ -56,8 +67,11 @@ class PlayerTrackersPreferences: NSViewController, MASPreferencesViewController 
             settings.flashOnDraw = flashOnDraw.state == NSOnState
         } else if sender == showRecord {
             settings.showWinLossRatio = showRecord.state == NSOnState
+        } else if sender == showBoardDamage {
+            settings.playerBoardDamage = showBoardDamage.state == NSOnState
         }
     }
+
 
     // MARK: - MASPreferencesViewController
     override var identifier: String? {
